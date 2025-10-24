@@ -1,47 +1,52 @@
-// 🧩 Persistent (in-memory) mock DB for Render
+// db.js — fully functional mock DB for Render
 let mockData = [
   { id: 1, title: "Mock SOP", description: "Running on mock DB 🧠" },
 ];
 
 module.exports = {
   query: async (sql, params) => {
-    console.log("⚙️ Mock DB query:", sql, params);
+    console.log("⚙️ Mock DB Query:", sql, params);
 
-    // Select all SOPs
+    // SELECT ALL
     if (sql.startsWith("SELECT")) {
       return { rows: mockData };
     }
 
-    // Insert SOP
+    // INSERT
     if (sql.startsWith("INSERT")) {
       const newSop = {
-        id: mockData.length + 1,
+        id: mockData.length ? mockData[mockData.length - 1].id + 1 : 1,
         title: params[0],
         description: params[1],
       };
-      mockData.unshift(newSop);
+      mockData.push(newSop);
       return { rows: [newSop] };
     }
 
-    // Update SOP
+    // UPDATE
     if (sql.startsWith("UPDATE")) {
       const id = params[2];
-      const updated = mockData.find((s) => s.id == id);
-      if (updated) {
-        updated.title = params[0];
-        updated.description = params[1];
+      const found = mockData.find((s) => s.id == id);
+      if (found) {
+        found.title = params[0];
+        found.description = params[1];
+        return { rows: [found] };
       }
-      return { rows: updated ? [updated] : [] };
-    }
-
-    // Delete SOP
-    if (sql.startsWith("DELETE")) {
-      const id = params[0];
-      mockData = mockData.filter((s) => s.id != id);
       return { rows: [] };
     }
 
-    // Default fallback
+    // DELETE
+    if (sql.startsWith("DELETE")) {
+      const id = params[0];
+      const index = mockData.findIndex((s) => s.id == id);
+      if (index !== -1) {
+        const deleted = mockData.splice(index, 1);
+        console.log("🗑️ Deleted mock SOP:", deleted[0]);
+        return { rows: deleted };
+      }
+      return { rows: [] };
+    }
+
     return { rows: [] };
   },
 };

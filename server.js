@@ -1,23 +1,9 @@
-require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// 🧠 Optional AI import (safe if API key missing)
-let generateSOP = null;
-try {
-  if (process.env.OPENAI_API_KEY) {
-    ({ generateSOP } = require("./ai"));
-    console.log("🧠 AI module loaded successfully.");
-  } else {
-    console.log("⚠️ OPENAI_API_KEY not found — AI features disabled.");
-  }
-} catch (err) {
-  console.log("⚠️ Failed to load AI module:", err.message);
-}
 
 // === Middleware ===
 app.use(
@@ -29,14 +15,14 @@ app.use(
 );
 app.use(express.json());
 
-// === Routes ===
+// === ROUTES ===
 
-// Health check
+// 🩺 Health Check
 app.get("/", (req, res) => {
-  res.send("✅ Backend running fine and CORS open.");
+  res.send("✅ SOP Studio backend is live (mock DB mode)");
 });
 
-// Fetch all SOPs
+// 📄 Fetch All SOPs
 app.get("/sop", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM sops ORDER BY id DESC");
@@ -47,7 +33,7 @@ app.get("/sop", async (req, res) => {
   }
 });
 
-// Add new SOP
+// ➕ Add SOP
 app.post("/sop", async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -55,14 +41,14 @@ app.post("/sop", async (req, res) => {
       "INSERT INTO sops (title, description) VALUES ($1, $2) RETURNING *",
       [title, description]
     );
-    res.json(result.rows[0]);
+    res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error("❌ Error inserting SOP:", err.message);
     res.status(500).json({ error: "Database error" });
   }
 });
 
-// Update SOP
+// ✏️ Update SOP
 app.put("/sop/:id", async (req, res) => {
   const { id } = req.params;
   const { title, description } = req.body;
@@ -81,17 +67,16 @@ app.put("/sop/:id", async (req, res) => {
   }
 });
 
-// Delete SOP
+// 🗑️ Delete SOP
 app.delete("/sop/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await pool.query(
-      "DELETE FROM sops WHERE id = $1 RETURNING *",
-      [id]
-    );
+    const result = await pool.query("DELETE FROM sops WHERE id = $1 RETURNING *", [id]);
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "SOP not found" });
     }
+
     res.json({ message: "🗑️ SOP deleted successfully" });
   } catch (err) {
     console.error("❌ Error deleting SOP:", err.message);
@@ -99,22 +84,7 @@ app.delete("/sop/:id", async (req, res) => {
   }
 });
 
-// AI route (won’t break if AI unavailable)
-app.post("/ai/sop", async (req, res) => {
-  try {
-    const { text } = req.body;
-    if (!generateSOP) {
-      return res.status(503).json({ error: "AI not connected" });
-    }
-    const result = await generateSOP(text);
-    res.json({ sop: result });
-  } catch (err) {
-    console.error("❌ AI generation failed:", err.message);
-    res.status(500).json({ error: "AI unavailable" });
-  }
-});
-
-// === Server start ===
+// === Start Server ===
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`✅ Server live on port ${PORT}`);
+  console.log(`🚀 SOP Studio backend running on port ${PORT}`);
 });
