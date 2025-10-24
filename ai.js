@@ -1,33 +1,30 @@
-require('dotenv').config();
-const OpenAI = require('openai');
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// ai.js — Safe version (won’t crash if OPENAI_API_KEY missing)
 
-async function generateSOP(rawText) {
-  try {
-    const prompt = `
-    Turn this messy workflow into a clear step-by-step SOP:
-    "${rawText}"
-    Format as:
-    1. Step name - explanation
-    2. Step name - explanation
-    `;
+let generateSOP = async (text) => {
+  console.log("⚠️ AI not available — returning placeholder.");
+  return `AI is disabled. You entered: "${text}"`;
+};
 
-    console.log("🧠 Sending prompt to OpenAI...");
-    console.log("🔑 Using API key:", process.env.OPENAI_API_KEY ? "Loaded ✅" : "❌ Missing!");
+// Only load OpenAI if API key exists
+if (process.env.OPENAI_API_KEY) {
+  const OpenAI = require("openai");
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    console.log("✅ AI responded successfully!");
-    return response.choices[0].message.content;
-
-  } catch (err) {
-    console.error("❌ AI ERROR DETAILS:");
-    console.error(err.response ? err.response.data : err.message || err);
-    throw err;
-  }
+  generateSOP = async (text) => {
+    try {
+      const response = await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "You are an SOP generator." },
+          { role: "user", content: text },
+        ],
+      });
+      return response.choices[0].message.content;
+    } catch (err) {
+      console.error("❌ AI generation failed:", err.message);
+      return "AI error — unable to generate SOP.";
+    }
+  };
 }
 
 module.exports = { generateSOP };
