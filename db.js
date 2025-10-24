@@ -1,52 +1,90 @@
-// db.js — fully functional mock DB for Render
-let mockData = [
-  { id: 1, title: "Mock SOP", description: "Running on mock DB 🧠" },
-];
+const express = require("express");
+const cors = require("cors");
+const pool = require("./db");
 
-module.exports = {
-  query: async (sql, params) => {
-    console.log("⚙️ Mock DB Query:", sql, params);
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-    // SELECT ALL
-    if (sql.startsWith("SELECT")) {
-      return { rows: mockData };
+// === Middleware ===
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
+app.use(express.json());
+
+// === ROUTES ===
+
+// 🩺 Health Check
+app.get("/", (req, res) => {
+  res.send("✅ SOP Studio backend is live (mock DB mode)");
+});
+
+// 📄 Fetch All SOPs
+app.get("/sop", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM sops ORDER BY id DESC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Error fetching SOPs:", err.message);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// ➕ Add SOP
+app.post("/sop", async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const result = await pool.query(
+      "INSERT INTO sops (title, description) VALUES ($1, $2) RETURNING *",
+      [title, description]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("❌ Error inserting SOP:", err.message);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// ✏️ Update SOP
+app.put("/sop/:id", async (req, res) => {
+  const { id } = req.params;
+  const { title, description } = req.body;
+  try {
+    const result = await pool.query(
+      "UPDATE sops SET title = $1, description = $2 WHERE id = $3 RETURNING *",
+      [title, description, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "SOP not found" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("❌ Error updating SOP:", err.message);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// 🗑️ Delete SOP
+app.delete("/sop/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query("DELETE FROM sops WHERE id = $1 RETURNING *", [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "SOP not found" });
     }
 
-    // INSERT
-    if (sql.startsWith("INSERT")) {
-      const newSop = {
-        id: mockData.length ? mockData[mockData.length - 1].id + 1 : 1,
-        title: params[0],
-        description: params[1],
-      };
-      mockData.push(newSop);
-      return { rows: [newSop] };
-    }
+    res.json({ message: "🗑️ SOP deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting SOP:", err.message);
+    res.status(500).json({ error: "Database error" });
+  }
+});
 
-    // UPDATE
-    if (sql.startsWith("UPDATE")) {
-      const id = params[2];
-      const found = mockData.find((s) => s.id == id);
-      if (found) {
-        found.title = params[0];
-        found.description = params[1];
-        return { rows: [found] };
-      }
-      return { rows: [] };
-    }
-
-    // DELETE
-    if (sql.startsWith("DELETE")) {
-      const id = params[0];
-      const index = mockData.findIndex((s) => s.id == id);
-      if (index !== -1) {
-        const deleted = mockData.splice(index, 1);
-        console.log("🗑️ Deleted mock SOP:", deleted[0]);
-        return { rows: deleted };
-      }
-      return { rows: [] };
-    }
-
-    return { rows: [] };
-  },
-};
+// === Start Server ===
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 SOP Studio backend running on port ${PORT}`);
+});

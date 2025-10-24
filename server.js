@@ -5,7 +5,6 @@ const pool = require("./db");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// === Middleware ===
 app.use(
   cors({
     origin: "*",
@@ -15,20 +14,18 @@ app.use(
 );
 app.use(express.json());
 
-// === ROUTES ===
-
 // 🩺 Health Check
 app.get("/", (req, res) => {
-  res.send("✅ SOP Studio backend is live (mock DB mode)");
+  res.send("✅ SOP Studio backend live (mock DB active)");
 });
 
-// 📄 Fetch All SOPs
+// 📄 Get all SOPs
 app.get("/sop", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM sops ORDER BY id DESC");
     res.json(result.rows);
   } catch (err) {
-    console.error("❌ Error fetching SOPs:", err.message);
+    console.error("❌ Fetch error:", err.message);
     res.status(500).json({ error: "Database error" });
   }
 });
@@ -43,7 +40,7 @@ app.post("/sop", async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error("❌ Error inserting SOP:", err.message);
+    console.error("❌ Insert error:", err.message);
     res.status(500).json({ error: "Database error" });
   }
 });
@@ -57,12 +54,11 @@ app.put("/sop/:id", async (req, res) => {
       "UPDATE sops SET title = $1, description = $2 WHERE id = $3 RETURNING *",
       [title, description, id]
     );
-    if (result.rows.length === 0) {
+    if (result.rows.length === 0)
       return res.status(404).json({ error: "SOP not found" });
-    }
     res.json(result.rows[0]);
   } catch (err) {
-    console.error("❌ Error updating SOP:", err.message);
+    console.error("❌ Update error:", err.message);
     res.status(500).json({ error: "Database error" });
   }
 });
@@ -72,19 +68,18 @@ app.delete("/sop/:id", async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query("DELETE FROM sops WHERE id = $1 RETURNING *", [id]);
-
     if (result.rows.length === 0) {
+      console.log("⚠️ SOP not found:", id);
       return res.status(404).json({ error: "SOP not found" });
     }
-
+    console.log("✅ Deleted:", result.rows[0]);
     res.json({ message: "🗑️ SOP deleted successfully" });
   } catch (err) {
-    console.error("❌ Error deleting SOP:", err.message);
+    console.error("❌ Delete error:", err.message);
     res.status(500).json({ error: "Database error" });
   }
 });
 
-// === Start Server ===
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 SOP Studio backend running on port ${PORT}`);
+  console.log(`🚀 Backend running on port ${PORT}`);
 });
