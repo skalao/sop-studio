@@ -2,10 +2,22 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
-const { generateSOP } = require("./ai");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 🧠 Optional AI import (safe if API key missing)
+let generateSOP = null;
+try {
+  if (process.env.OPENAI_API_KEY) {
+    ({ generateSOP } = require("./ai"));
+    console.log("🧠 AI module loaded successfully.");
+  } else {
+    console.log("⚠️ OPENAI_API_KEY not found — AI features disabled.");
+  }
+} catch (err) {
+  console.log("⚠️ Failed to load AI module:", err.message);
+}
 
 // === Middleware ===
 app.use(
@@ -87,7 +99,7 @@ app.delete("/sop/:id", async (req, res) => {
   }
 });
 
-// AI route (safe fallback if AI key missing)
+// AI route (won’t break if AI unavailable)
 app.post("/ai/sop", async (req, res) => {
   try {
     const { text } = req.body;
