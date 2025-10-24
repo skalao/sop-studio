@@ -1,12 +1,29 @@
-require('dotenv').config();
-const { Pool } = require('pg');
+// 🔮 Temporary mock database for Render testing (no Postgres needed)
+module.exports = {
+  query: async (sql, params) => {
+    console.log("⚙️ Mock DB query called:", sql, params);
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
+    // Select all
+    if (sql.startsWith("SELECT")) {
+      return { rows: [{ id: 1, title: "Mock SOP", description: "Running on mock DB 🧠" }] };
+    }
 
-module.exports = pool;
+    // Insert
+    if (sql.startsWith("INSERT")) {
+      return { rows: [{ id: Date.now(), title: params[0], description: params[1] }] };
+    }
+
+    // Update
+    if (sql.startsWith("UPDATE")) {
+      return { rows: [{ id: params[2], title: params[0], description: params[1] }] };
+    }
+
+    // Delete
+    if (sql.startsWith("DELETE")) {
+      return { rows: [] };
+    }
+
+    // Fallback
+    return { rows: [] };
+  },
+};
